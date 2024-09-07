@@ -72,6 +72,8 @@
 <script>
   var gateway = `ws://${window.location.hostname}/ws`;
   var websocket;
+  var xInput;
+  var yInput;
   window.addEventListener('load', onLoad);
   function initWebSocket() {
     console.log('Trying to open a WebSocket connection...');
