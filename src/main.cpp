@@ -1,15 +1,12 @@
-/*********
-  Rui Santos
-  Complete project details at https://RandomNerdTutorials.com/esp32-websocket-server-arduino/
-  The above copyright notice and this permission notice shall be included in all
-  copies or substantial portions of the Software.
-*********/
-
 // Import required libraries
 #include <Arduino.h>
 #include <WiFi.h>
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
+#include <iostream>
+#include <fstream>
+
+using namespace std;
 
 // Replace with your network credentials
 const char* ssid = "ESP32 LED Remote";  // Enter SSID here
@@ -21,10 +18,14 @@ IPAddress subnet(255,255,255,0);
 
 bool ledState = 0;
 const int ledPin = 2;
+std::string html;
+std::ifstream file("app.html");
+char* htmlChar;
+
 
 // Create AsyncWebServer object on port 80
 AsyncWebServer server(80);
-AsyncWebSocket ws("/ws");
+AsyncWebSocket aws("/ws");
 
 const char index_html[] PROGMEM = R"rawliteral(
 <!DOCTYPE HTML><html>
@@ -55,11 +56,6 @@ const char index_html[] PROGMEM = R"rawliteral(
   body {
     margin: 0;
   }
-  .content {
-    padding: 30px;
-    max-width: 600px;
-    margin: 0 auto;
-  }
   .button {
     padding: 15px 50px;
     font-size: 24px;
@@ -88,18 +84,18 @@ const char index_html[] PROGMEM = R"rawliteral(
      color:#8c8c8c;
      font-weight: bold;
    }
+   .joystick {
+    margin: none;
+   }
   </style>
 <title>ESP Web Server</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" href="data:,">
 </head>
 <body>
-  <div class="topnav">
-    <h1>Controller</h1>
-  </div>
   <div class="content">
       <p><button id="button" class="button">Toggle</button></p>
-      <canvas id="canvas" name="game"></canvas>
+      <canvas id="canvas" name="game" class="joystick"></canvas>
   </div>
 <script>
   var gateway = `ws://${window.location.hostname}/ws`;
@@ -112,7 +108,6 @@ const char index_html[] PROGMEM = R"rawliteral(
     websocket = new WebSocket(gateway);
     websocket.onopen    = onOpen;
     websocket.onclose   = onClose;
-    websocket.onmessage = onMessage; // <-- add this line
   }
   function onOpen(event) {
     log('Connection opened');
@@ -134,6 +129,10 @@ const char index_html[] PROGMEM = R"rawliteral(
     console.log("Websocket message 'toggle' sent");
     websocket.send("toggle");
   }
+
+  //---------------------------------------------------------------
+  //                        JOYSTICK
+  //---------------------------------------------------------------
 </script>
 <script>
   var canvas, ctx;
@@ -153,16 +152,13 @@ const char index_html[] PROGMEM = R"rawliteral(
       document.addEventListener('touchcancel', stopDrawing);
       document.addEventListener('touchmove', Draw);
       window.addEventListener('resize', resize);
-
-      document.getElementById("x_coordinate").innerText = 0;
-      document.getElementById("y_coordinate").innerText = 0;
-      document.getElementById("speed").innerText = 0;
-      document.getElementById("angle").innerText = 0;
   });
+
   var width, height, radius, x_orig, y_orig;
+
   function resize() {
       width = window.innerWidth;
-      radius = 150;
+      radius = 100;
       height = radius * 6.5;
       ctx.canvas.width = width;
       ctx.canvas.height = height;
@@ -260,23 +256,25 @@ const char index_html[] PROGMEM = R"rawliteral(
 
           var x_relative = Math.round(x - x_orig);
           var y_relative = Math.round(y - y_orig);
-          
 
-          document.getElementById("x_coordinate").innerText =  x_relative;
-          document.getElementById("y_coordinate").innerText =y_relative ;
-          document.getElementById("speed").innerText = speed;
-          document.getElementById("angle").innerText = angle_in_degrees;
-
-          send( x_relative,y_relative,speed,angle_in_degrees);
+          send( x_relative,y_relative);
       }
   } 
+  
+  function send(x, y) {
+    var data = {"x":x,"y":y};
+    data = JSON.stringify(data);
+    console.log(typeof(data));
+    console.log(data);
+    websocket.send(data);
+  }
 </script>
 </body>
 </html>
 )rawliteral";
 
 void notifyClients() {
-  ws.textAll(String(ledState));
+  aws.textAll(String(ledState));
 }
 
 void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
@@ -310,8 +308,8 @@ void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType 
 }
 
 void initWebSocket() {
-  ws.onEvent(onEvent);
-  server.addHandler(&ws);
+  aws.onEvent(onEvent);
+  server.addHandler(&aws);
 }
 
 String processor(const String& var){
@@ -328,6 +326,17 @@ String processor(const String& var){
 }
 
 void setup(){
+  while (getline (file, html)) {
+    // Output the text from the file
+    cout << html;
+  }
+
+  char* htmlChar = &html[0]; 
+  std::cout << htmlChar;   
+
+  // Close the file
+  file.close();
+
   // Serial port for debugging purposes
   Serial.begin(115200);
 
@@ -353,6 +362,7 @@ void setup(){
 }
 
 void loop() {
-  ws.cleanupClients();
+  aws.cleanupClients();
   digitalWrite(ledPin, ledState);
+  Serial.println(htmlChar);
 }
