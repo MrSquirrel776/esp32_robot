@@ -55,6 +55,11 @@ const char index_html[] PROGMEM = R"rawliteral(
   }
   body {
     margin: 0;
+    touch-action: none;
+    webkit-touch-action: none;
+    moz-touch-action: none;
+    ms-touch-action: none;
+    o-touch-action: none;
   }
   .button {
     padding: 15px 50px;
@@ -286,6 +291,10 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
       Serial.println("LED toggled");
       notifyClients();
     }
+    else {
+      Serial.print("Message recieved: ");
+      Serial.println((char*)data);
+    }
   }
 }
 
@@ -364,5 +373,4 @@ void setup(){
 void loop() {
   aws.cleanupClients();
   digitalWrite(ledPin, ledState);
-  Serial.println(htmlChar);
 }
