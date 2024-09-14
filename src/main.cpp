@@ -2,9 +2,11 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <AsyncTCP.h>
+#include <ArduinoJson.h>
 #include <ESPAsyncWebServer.h>
 #include <iostream>
 #include <fstream>
+#include <app.h>
 
 using namespace std;
 
@@ -18,9 +20,13 @@ IPAddress subnet(255,255,255,0);
 
 bool ledState = 0;
 const int ledPin = 2;
-std::string html;
-std::ifstream file("app.html");
+char* html;
 char* htmlChar;
+
+int xPwm;
+int yPwm;
+
+void parseJson(char* json);
 
 
 // Create AsyncWebServer object on port 80
@@ -294,6 +300,8 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
     else {
       Serial.print("Message recieved: ");
       Serial.println((char*)data);
+      parseJson((char*)data);
+
     }
   }
 }
@@ -321,6 +329,20 @@ void initWebSocket() {
   server.addHandler(&aws);
 }
 
+void parseJson(char* json) {
+  JsonDocument doc;
+
+  deserializeJson(doc, json);
+
+  Serial.printf("x: %u", doc["x"].as<int>());
+  Serial.printf("y: %u", doc["y"].as<int>());
+  xPwm = map(doc["x"].as<int>(), -100, 100, -255, 255);
+  yPwm = map(doc["y"].as<int>(), -100, 100, -255, 255);
+  Serial.printf("x: %u", xPwm);
+  Serial.printf("y: %u", yPwm);
+  Serial.println();
+}
+
 String processor(const String& var){
   Serial.println(var);
   if(var == "STATE"){
@@ -335,17 +357,6 @@ String processor(const String& var){
 }
 
 void setup(){
-  while (getline (file, html)) {
-    // Output the text from the file
-    cout << html;
-  }
-
-  char* htmlChar = &html[0]; 
-  std::cout << htmlChar;   
-
-  // Close the file
-  file.close();
-
   // Serial port for debugging purposes
   Serial.begin(115200);
 
@@ -360,6 +371,8 @@ void setup(){
   Serial.println(WiFi.localIP());
 
   initWebSocket();
+
+  //getHtml("app.html");
 
   // Route for root / web page
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
