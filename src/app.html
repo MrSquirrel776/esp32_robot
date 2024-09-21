@@ -237,7 +237,7 @@
   } 
   
   function send(x, y) {
-    var data = {"x":x,"y":y};
+    var data = {"x":Math.abs(x),"y":Math.abs(y), "xpos":(x > 0), "ypos":(y > 0)};
     data = JSON.stringify(data);
     console.log(typeof(data));
     console.log(data);

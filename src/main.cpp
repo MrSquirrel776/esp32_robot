@@ -26,6 +26,10 @@ char* htmlChar;
 int xPwm;
 int yPwm;
 
+const int motorA1 = 18;
+const int motorA2 = 19;
+const int motorAen = 4;
+
 void parseJson(char* json);
 
 
@@ -273,7 +277,7 @@ const char index_html[] PROGMEM = R"rawliteral(
   } 
   
   function send(x, y) {
-    var data = {"x":x,"y":y};
+    var data = {"x":Math.abs(x),"y":Math.abs(y), "xpos":(x > 0), "ypos":(y > 0)};
     data = JSON.stringify(data);
     console.log(typeof(data));
     console.log(data);
@@ -299,9 +303,7 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
     }
     else {
       Serial.print("Message recieved: ");
-      Serial.println((char*)data);
       parseJson((char*)data);
-
     }
   }
 }
@@ -334,12 +336,16 @@ void parseJson(char* json) {
 
   deserializeJson(doc, json);
 
-  Serial.printf("x: %u", doc["x"].as<int>());
+  Serial.printf("x: %u, ", doc["x"].as<int>());
   Serial.printf("y: %u", doc["y"].as<int>());
-  xPwm = map(doc["x"].as<int>(), -100, 100, -255, 255);
-  yPwm = map(doc["y"].as<int>(), -100, 100, -255, 255);
-  Serial.printf("x: %u", xPwm);
-  Serial.printf("y: %u", yPwm);
+  Serial.println();
+  //xPwm = map(doc["x"].as<int>(), -100, 100, 0, 510) - 255;
+  //yPwm = map(doc["y"].as<int>(), -100, 100, 0, 510) - 255;
+  xPwm = (doc["x"].as<int>() / 255) * 100;
+  yPwm = (doc["y"].as<int>() / 255) * 100;
+  Serial.printf("x pwm: %u, ", xPwm);
+  Serial.printf("y pwm: %u", yPwm);
+  Serial.println();
   Serial.println();
 }
 
